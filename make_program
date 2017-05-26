@@ -1,0 +1,341 @@
+#================================[[ beg-code ]]================================#
+
+#   VER_NUM     "0.5a"
+#   VER_TXT     "uploaded to github"
+
+
+#===(manditory)============================================#
+# basename of executable, header, and all code files
+#NAME_BASE  = yFONT
+# additional standard and outside libraries
+#LIB_STD    = -lX11 -lGL -lm -lpng
+# all heatherly libraries used, debug versions whenever available
+#LIB_MINE   = -lyX11 -lySTR_debug -lyGLTEX_debug
+# directory for production code, no trailing slash
+#INST_DIR   = /usr/local/sbin
+
+
+
+#===(optional)=============================================#
+# extra include directories required
+#INC_MINE   = -I/usr/include/freetype2
+# utilities generated, separate from main program
+#NAME_UTIL  = yFONT_make yFONT_show yFONT_tick
+# libraries only for the utilities
+#LIB_UTIL   = -lfreetype
+
+
+
+#===(specialty)============================================#
+# post install activites
+#LINK_INST  = 
+# post remove activites
+#LINK_REM   = 
+
+
+
+#===[[ VARIABLES ]]========================================#
+
+#===(content variables)====================================#
+NAME_DEBUG := $(NAME_BASE)_debug
+NAME_UNIT  := $(NAME_BASE)_unit
+ifeq ($(shell printf "%1.1s" $(NAME_BASE)),y)
+   LIBRARY    := y
+else
+   LIBRARY    := -
+endif
+
+#===(compiling variables)==================================#
+COMPILE    := gcc -c -std=gnu89 -x c -g -pg -Wall -Wextra
+COMPILE_EX :=
+INC_DIR    := -I/usr/local/include $(INC_MINE)
+HEADERS    := $(sort $(wildcard $(NAME_BASE)*.h))
+SRC_NORM   := $(patsubst %c,%c ,$(sort $(subst $(NAME_UNIT).c,,$(wildcard $(NAME_BASE)*.c))))
+SRC_UTIL   := $(patsubst %,%.c ,$(NAME_UTIL))
+#---(remove utilities)-------------#
+SRC_NORM   := $(subst $(word 1,$(SRC_UTIL)),,$(SRC_NORM))
+SRC_NORM   := $(subst $(word 2,$(SRC_UTIL)),,$(SRC_NORM))
+SRC_NORM   := $(subst $(word 3,$(SRC_UTIL)),,$(SRC_NORM))
+SRC_NORM   := $(subst $(word 4,$(SRC_UTIL)),,$(SRC_NORM))
+SRC_NORM   := $(subst $(word 5,$(SRC_UTIL)),,$(SRC_NORM))
+#===(change for library)===================================#
+ifeq ($(LIBRARY),y)
+   COMPILE_EX := -fPIC
+endif
+
+#===(object variables)=====================================#
+OBJ_DEBUG  := $(patsubst %c,%o ,$(SRC_NORM))
+OBJ_NORM   := $(patsubst %c,%os,$(SRC_NORM))
+ifeq ($(LIBRARY),y)
+   OBJ_UNIT   := $(OBJ_DEBUG) $(NAME_UNIT).o
+else
+   OBJ_UNIT   := $(subst $(NAME_BASE)_main.o,$(NAME_UNIT).o,$(OBJ_DEBUG))
+endif
+OBJ_UTILD  := $(patsubst %c,%o ,$(SRC_UTIL))
+OBJ_UTIL   := $(patsubst %c,%os,$(SRC_UTIL))
+#---(simple spacing fix)-----------#
+SRC_NORM   := $(patsubst %os,%c ,$(OBJ_NORM))
+
+#===(linker variables)=====================================#
+LINKER     := gcc
+LIB_DIR    := -L/usr/local/lib -L/usr/lib64 
+LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE) -lyURG_debug -lyLOG
+LIB_NORM   := $(subst _debug,      ,$(LIB_DEBUG))
+LIB_UNIT   := $(LIB_DEBUG)   -lyUNIT -lyVAR_debug
+
+#===(install variables)====================================#
+INST_OWNER := root
+INST_PERMS := 0755
+
+#===(support file variables)===============================#
+MANUALS    := $(wildcard $(NAME_BASE).[123456789])
+UNITTEST   := $(NAME_BASE).unit
+EDITLIST   := $(HEADERS) $(SRC_NORM) $(SRC_UTIL) $(MANUALS)
+
+#===(housekeeping variables)===============================#
+COPY       := cp -f  
+MOVE       := mv -f  
+CLEAN      := rm -f
+PRINTF     := @printf
+STRIP      := @grep -v -e " DEBUG_" -e " yLOG_" 
+
+
+
+#===[[ MAIN RULE ]]========================================#
+all                : $(NAME_DEBUG) $(NAME_BASE) $(NAME_UNIT) $(NAME_UTIL)
+
+
+
+#===[[ EXECUTABLES ]]======================================#
+
+#---(production version)--------------#
+$(NAME_BASE)       : $(OBJ_DEBUG)
+ifeq ($(LIBRARY),y)
+	$(LINKER)  -shared -Wl,-soname,lib$(NAME_BASE).so.1    $(LIB_NORM)  -o lib$(NAME_BASE).so.1.0     $(OBJ_NORM)
+	ar         rcs                 lib$(NAME_BASE).a                                                  $(OBJ_NORM)
+else
+	$(LINKER)  -o $(NAME_BASE)        $(OBJ_NORM)   $(LIB_NORM)
+endif
+
+#---(debug version)-------------------#
+$(NAME_DEBUG)      : $(OBJ_DEBUG)
+ifeq ($(LIBRARY),y)
+	$(LINKER)  -shared -Wl,-soname,lib$(NAME_DEBUG).so.1   $(LIB_DEBUG)  -o lib$(NAME_DEBUG).so.1.0   $(OBJ_DEBUG)
+	ar         rcs                 lib$(NAME_DEBUG).a                                                 $(OBJ_DEBUG)
+else
+	$(LINKER)  -o $(NAME_DEBUG)       $(OBJ_DEBUG)  $(LIB_DEBUG)
+endif
+
+#---(utility versions)----------------#
+$(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
+	printf "%-20.20s   %-20.20s\n" "$<" "$@";
+	$(LINKER)  -o $@          $(OBJ_NORM)   $@.os         $(LIB_NORM)   $(LIB_UTIL)
+	$(LINKER)  -o $@_debug    $(OBJ_DEBUG)  $@.o          $(LIB_DEBUG)  $(LIB_UTIL)
+
+#---(unit testing)--------------------#
+$(NAME_UNIT)       : $(OBJ_DEBUG) $(UNITTEST)
+	if [[ -s $(UNITTEST) ]]; then koios $(NAME_BASE); $(COMPILE) $(NAME_UNIT).c; $(LINKER) -o $(NAME_UNIT) $(OBJ_UNIT) $(LIB_UNIT); fi
+
+$(UNITTEST)        : 
+	if [[ ! -e $(UNITTEST) ]]; then touch $(UNITTEST); fi
+
+
+
+
+
+#===[[ OBJECT FILES ]]=====================================#
+# library files need -fPIC which will be in COMPILE_EX (if a lib) or blank if normal
+
+#---(main objects)--------------------#
+$(OBJ_DEBUG)       : %.o : %.c $(HEADERS)
+	$(COMPILE) $(COMPILE_EX)   $<                          $(INC_DIR)
+	$(STRIP)                   $<        >  $<s
+	$(COMPILE) $(COMPILE_EX)   $<s      -o  $@s            $(INC_DIR)
+
+#---(utility objects)-----------------#
+$(OBJ_UTILD)       : %.o : %.c $(HEADERS)
+	$(COMPILE)                 $<                          $(INC_DIR)
+	$(STRIP)                   $<        >  $<s
+	$(COMPILE)                 $<s      -o  $@s            $(INC_DIR)
+
+
+
+#===[[ HOUSEKEEPING ]]=====================================#
+
+show_vars          :
+	$(PRINTF)   "\n";
+	$(PRINTF)   "VARIABLE CONFIRMATION\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "NAME_BASE  : $(NAME_BASE)\n";
+	$(PRINTF)   "NAME_DEBUG : $(NAME_DEBUG)\n";
+	$(PRINTF)   "NAME_UNIT  : $(NAME_UNIT)\n";
+	$(PRINTF)   "NAME_UTIL  : $(NAME_UTIL)\n";
+	$(PRINTF)   "LIBRARY    : $(LIBRARY)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "COMPILE    : $(COMPILE)\n";
+	$(PRINTF)   "COMPILE_EX : $(COMPILE_EX)\n";
+	$(PRINTF)   "INC_MINE   : $(INC_MINE)\n";
+	$(PRINTF)   "INC_DIR    : $(INC_DIR)\n";
+	$(PRINTF)   "HEADERS    : $(HEADERS)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "SRC_NORM   : $(SRC_NORM)\n";
+	$(PRINTF)   "OBJ_NORM   : $(OBJ_NORM)\n";
+	$(PRINTF)   "OBJ_DEBUG  : $(OBJ_DEBUG)\n";
+	$(PRINTF)   "OBJ_UNIT   : $(OBJ_UNIT)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "SRC_UTIL   : $(SRC_UTIL)\n";
+	$(PRINTF)   "OBJ_UTIL   : $(OBJ_UTIL)\n";
+	$(PRINTF)   "OBJ_UTILD  : $(OBJ_UTILD)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "LINKER     : $(LINKER)\n";
+	$(PRINTF)   "LIB_DIR    : $(LIB_DIR)\n";
+	$(PRINTF)   "LIB_STD    : $(LIB_STD)\n";
+	$(PRINTF)   "LIB_MINE   : $(LIB_MINE)\n";
+	$(PRINTF)   "LIB_UTIL   : $(LIB_UTIL)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "LIB_NORM   : $(LIB_NORM)\n";
+	$(PRINTF)   "LIB_DEBUG  : $(LIB_DEBUG)\n";
+	$(PRINTF)   "LIB_UNIT   : $(LIB_UNIT)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "INST_DIR   : $(INST_DIR)\n";
+	$(PRINTF)   "INST_OWNER : $(INST_OWNER)\n";
+	$(PRINTF)   "INST_PERMS : $(INST_PERMS)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "MANUALS    : $(MANUALS)\n";
+	$(PRINTF)   "UNITTEST   : $(UNITTEST)\n";
+	$(PRINTF)   "EDITLIST   : $(EDITLIST)\n";
+	$(PRINTF)   "\n";
+
+
+vi_edit            :
+	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(EDITLIST)
+
+bigclean           :
+ifeq ($(LIBRARY),y)
+	${CLEAN}    lib$(NAME_BASE).so.1
+	${CLEAN}    lib$(NAME_BASE).so.1.0
+	${CLEAN}    lib$(NAME_DEBUG).so.1
+	${CLEAN}    lib$(NAME_DEBUG).so.1.0
+	${CLEAN}    lib$(NAME_BASE).a
+	${CLEAN}    lib$(NAME_DEBUG).a
+else
+	$(CLEAN)    $(NAME_BASE)
+	$(CLEAN)    $(NAME_DEBUG)
+	$(CLEAN)    $(NAME_UNIT)
+endif
+	@for ENTRY in $(NAME_UTIL); do \
+	   if [[ -e "$${ENTRY}" ]]; then \
+         printf "removing %s\n" "$${ENTRY}"; \
+	      $(CLEAN)    $${ENTRY}; \
+         printf "removing %s\n" "$${ENTRY}_debug"; \
+	      $(CLEAN)    $${ENTRY}_debug; \
+      fi \
+   done
+	$(CLEAN)    .*.swp
+
+
+
+clean              :
+	#---(object and stripped files)-------#
+	$(CLEAN)    $(NAME_BASE)*.o
+	$(CLEAN)    $(NAME_BASE)*.cs
+	$(CLEAN)    $(NAME_BASE)*.os
+	$(CLEAN)    $(NAME_BASE)*.Sc
+	$(CLEAN)    $(NAME_BASE)*.So
+	#---(created unit code)---------------#
+	$(CLEAN)    $(NAME_UNIT).code
+	$(CLEAN)    $(NAME_UNIT).c
+	#---(junk files)----------------------#
+	$(CLEAN)    *~
+	$(CLEAN)    temp*
+
+
+
+install            : install_prep install_main install_post
+
+install_main       :
+ifeq ($(LIBRARY),y)
+	@_lib      -s $(NAME_BASE)
+	@ldconfig
+	@sha1sum   /usr/local/lib64/lib$(NAME_BASE).so.1.0
+	@_lib      -a $(NAME_BASE)
+	@ldconfig
+	@sha1sum   /usr/local/lib64/lib$(NAME_BASE).a
+	@_lib      -S $(NAME_DEBUG)
+	@ldconfig
+	@sha1sum   /usr/local/lib64/lib$(NAME_DEBUG).so.1.0
+	@_lib      -A $(NAME_DEBUG)
+	@ldconfig
+	@sha1sum   /usr/local/lib64/lib$(NAME_DEBUG).a
+else
+	@$(COPY)     $(NAME_BASE)                 $(INST_DIR)
+	@chmod       $(INST_PERMS)                $(INST_DIR)/$(NAME_BASE)
+	@chown       $(INST_OWNER):$(INST_OWNER)  $(INST_DIR)/$(NAME_BASE)
+	@sha1sum     $(INST_DIR)/$(NAME_BASE)
+	@$(COPY)     $(NAME_DEBUG)                $(INST_DIR)
+	@chmod       $(INST_PERMS)                $(INST_DIR)/$(NAME_DEBUG)
+	@chown       $(INST_OWNER):$(INST_OWNER)  $(INST_DIR)/$(NAME_DEBUG)
+	@sha1sum     $(INST_DIR)/$(NAME_DEBUG)
+endif
+	@for MAN in $(MANUALS); do \
+	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
+ 	   declare MANBZ2="$${MAN}.bz2"; \
+      $(COPY)     $${MAN}    $${MANDIR}/; \
+      bzip2 -f    $${MANDIR}/$${MAN}; \
+      chmod 0644  $${MANDIR}/$${MANBZ2}; \
+      printf "installing manual ----------------------  %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
+   done
+	@for ENTRY in $(NAME_UTIL); do \
+	   if [[ -e "$${ENTRY}" ]]; then \
+	      $(COPY)     $${ENTRY}                    $(INST_DIR); \
+	      chmod       $(INST_PERMS)                $(INST_DIR)/$${ENTRY}; \
+	      chown       $(INST_OWNER):$(INST_OWNER)  $(INST_DIR)/$${ENTRY}; \
+	      sha1sum     $(INST_DIR)/$${ENTRY}; \
+	      $(COPY)     $${ENTRY}_debug              $(INST_DIR); \
+	      chmod       $(INST_PERMS)                $(INST_DIR)/$${ENTRY}_debug; \
+	      chown       $(INST_OWNER):$(INST_OWNER)  $(INST_DIR)/$${ENTRY}_debug; \
+	      sha1sum     $(INST_DIR)/$${ENTRY}_debug; \
+      fi \
+   done
+
+install_prep       :
+
+install_post       :
+
+
+remove             : remove_prep remove_main remove_post
+
+remove_main        :
+	#---(remove from production)----------#
+ifeq ($(LIBRARY),y)
+	_lib      -d  $(NAME_BASE)
+	_lib      -d  $(NAME_DEBUG)
+	ldconfig
+else
+	$(CLEAN)    $(INST_DIR)/$(NAME_BASE)
+	$(CLEAN)    $(INST_DIR)/$(NAME_DEBUG)
+endif
+	@for MAN in $(MANUALS); do \
+	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
+ 	   declare MANBZ2="$${MAN}.bz2"; \
+	   if [[ -e "$${MANDIR}/$${MANBZ2}" ]]; then \
+         printf "removing manual      : %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
+         rm -f       $${MANDIR}/$${MANBZ2}; \
+      fi \
+   done
+	@for ENTRY in $(NAME_UTIL); do \
+	   if [[ -e "$(INST_DIR)/$${ENTRY}" ]]; then \
+         printf "removing utility     : %s/%s\n" "$(INST_DIR)" "$${ENTRY}"; \
+	      $(CLEAN)    $(INST_DIR)/$${ENTRY}; \
+         printf "removing utility     : %s/%s\n" "$(INST_DIR)" "$${ENTRY}_debug"; \
+	      $(CLEAN)    $(INST_DIR)/$${ENTRY}_debug; \
+      fi \
+   done
+
+remove_prep        :
+
+remove_post        :
+
+
+
+#================================[[ end-code ]]================================#
