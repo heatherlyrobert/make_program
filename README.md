@@ -1,6 +1,6 @@
 # make_program
-#   VER_NUM     "0.5b"
-#   VER_TXT     "updated to work with git_now"
+#   VER_NUM     "0.5c"
+#   VER_TXT     "created editing options"
 
 make driver for heatherly standard programs
 

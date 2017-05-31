@@ -36,11 +36,17 @@
 
 #===(content variables)====================================#
 NAME_DEBUG := $(NAME_BASE)_debug
-NAME_UNIT  := $(NAME_BASE)_unit
+# starts with a 'y' means a library
 ifeq ($(shell printf "%1.1s" $(NAME_BASE)),y)
    LIBRARY    := y
 else
    LIBRARY    := -
+endif
+# yLOG can not be stripped in this way
+ifeq ($(NAME_BASE),yLOG)
+   DEBUG_VER  := -
+else
+   DEBUG_VER  := y
 endif
 
 #===(compiling variables)==================================#
@@ -48,7 +54,8 @@ COMPILE    := gcc -c -std=gnu89 -x c -g -pg -Wall -Wextra
 COMPILE_EX :=
 INC_DIR    := -I/usr/local/include $(INC_MINE)
 HEADERS    := $(sort $(wildcard $(NAME_BASE)*.h))
-SRC_NORM   := $(patsubst %c,%c ,$(sort $(subst $(NAME_UNIT).c,,$(wildcard $(NAME_BASE)*.c))))
+SRC_NORM   := $(patsubst %c,%c ,$(sort $(filter-out %_unit.c,$(wildcard $(NAME_BASE)*.c))))
+SRC_UNIT   := $(patsubst %c,%c ,$(sort $(filter     %_unit.c,$(wildcard $(NAME_BASE)*.c))))
 SRC_UTIL   := $(patsubst %,%.c ,$(NAME_UTIL))
 #---(remove utilities)-------------#
 SRC_NORM   := $(subst $(word 1,$(SRC_UTIL)),,$(SRC_NORM))
@@ -64,11 +71,7 @@ endif
 #===(object variables)=====================================#
 OBJ_DEBUG  := $(patsubst %c,%o ,$(SRC_NORM))
 OBJ_NORM   := $(patsubst %c,%os,$(SRC_NORM))
-ifeq ($(LIBRARY),y)
-   OBJ_UNIT   := $(OBJ_DEBUG) $(NAME_UNIT).o
-else
-   OBJ_UNIT   := $(subst $(NAME_BASE)_main.o,$(NAME_UNIT).o,$(OBJ_DEBUG))
-endif
+OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
 OBJ_UTILD  := $(patsubst %c,%o ,$(SRC_UTIL))
 OBJ_UTIL   := $(patsubst %c,%os,$(SRC_UTIL))
 #---(simple spacing fix)-----------#
@@ -86,21 +89,27 @@ INST_OWNER := root
 INST_PERMS := 0755
 
 #===(support file variables)===============================#
-MANUALS    := $(wildcard $(NAME_BASE).[123456789])
-UNITTEST   := $(NAME_BASE).unit
-EDITLIST   := $(HEADERS) $(SRC_NORM) $(SRC_UTIL) $(MANUALS)
+MANUALS    := $(sort $(wildcard $(NAME_BASE).[0123456789]))
+UNITTEST   := $(sort $(wildcard $(NAME_BASE)*.unit))
+UNITPROG   := $(subst .unit,_unit,$(UNITTEST))
+EDITLIST   := $(HEADERS) $(SRC_NORM) $(SRC_UTIL)
 
 #===(housekeeping variables)===============================#
 COPY       := cp -f  
 MOVE       := mv -f  
 CLEAN      := rm -f
 PRINTF     := @printf
+ifeq ($(DEBUG_VER),y)
 STRIP      := @grep -v -e " DEBUG_" -e " yLOG_" 
+else
+STRIP      := cat
+endif
+
 
 
 
 #===[[ MAIN RULE ]]========================================#
-all                : $(NAME_DEBUG) $(NAME_BASE) $(NAME_UNIT) $(NAME_UTIL)
+all                : $(NAME_DEBUG) $(NAME_BASE) $(UNITPROG) $(NAME_UTIL)
 
 
 
@@ -131,13 +140,17 @@ $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
 	$(LINKER)  -o $@_debug    $(OBJ_DEBUG)  $@.o          $(LIB_DEBUG)  $(LIB_UTIL)
 
 #---(unit testing)--------------------#
-$(NAME_UNIT)       : $(OBJ_DEBUG) $(UNITTEST)
-	if [[ -s $(UNITTEST) ]]; then koios $(NAME_BASE); $(COMPILE) $(NAME_UNIT).c; $(LINKER) -o $(NAME_UNIT) $(OBJ_UNIT) $(LIB_UNIT); fi
+units              : $(UNITPROG)
 
-$(UNITTEST)        : 
-	if [[ ! -e $(UNITTEST) ]]; then touch $(UNITTEST); fi
-
-
+$(UNITPROG)        : %_unit : %.unit $(OBJ_DEBUG) $(UNITTEST)
+	@printf "unit test %s %s %d\n" "$<" "$@" "$${#$@}";
+	@declare  UNIT_ENTRY=$@; \
+	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
+    printf "unit_base  : %s\n" "$${UNIT_BASE}"; \
+    printf "unit_entry : %s\n" "$${UNIT_ENTRY}"; \
+	 koios $${UNIT_BASE}; \
+    $(COMPILE) $${UNIT_ENTRY}.c; \
+	 $(LINKER) -o $${UNIT_ENTRY} $${UNIT_ENTRY}.o $(OBJ_UNIT) $(LIB_UNIT);
 
 
 
@@ -166,7 +179,6 @@ show_vars          :
 	$(PRINTF)   "\n";
 	$(PRINTF)   "NAME_BASE  : $(NAME_BASE)\n";
 	$(PRINTF)   "NAME_DEBUG : $(NAME_DEBUG)\n";
-	$(PRINTF)   "NAME_UNIT  : $(NAME_UNIT)\n";
 	$(PRINTF)   "NAME_UTIL  : $(NAME_UTIL)\n";
 	$(PRINTF)   "LIBRARY    : $(LIBRARY)\n";
 	$(PRINTF)   "\n";
@@ -179,6 +191,10 @@ show_vars          :
 	$(PRINTF)   "SRC_NORM   : $(SRC_NORM)\n";
 	$(PRINTF)   "OBJ_NORM   : $(OBJ_NORM)\n";
 	$(PRINTF)   "OBJ_DEBUG  : $(OBJ_DEBUG)\n";
+	$(PRINTF)   "\n";
+	$(PRINTF)   "UNITTEST   : $(UNITTEST)\n";
+	$(PRINTF)   "UNITPROG   : $(UNITPROG)\n";
+	$(PRINTF)   "SRC_UNIT   : $(SRC_UNIT)\n";
 	$(PRINTF)   "OBJ_UNIT   : $(OBJ_UNIT)\n";
 	$(PRINTF)   "\n";
 	$(PRINTF)   "SRC_UTIL   : $(SRC_UTIL)\n";
@@ -200,13 +216,18 @@ show_vars          :
 	$(PRINTF)   "INST_PERMS : $(INST_PERMS)\n";
 	$(PRINTF)   "\n";
 	$(PRINTF)   "MANUALS    : $(MANUALS)\n";
-	$(PRINTF)   "UNITTEST   : $(UNITTEST)\n";
 	$(PRINTF)   "EDITLIST   : $(EDITLIST)\n";
 	$(PRINTF)   "\n";
 
 
 vi_edit            :
 	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(EDITLIST)
+
+vi_man             :
+	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(MANUALS)
+
+vi_unit            :
+	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(UNITTEST)
 
 bigclean           :
 ifeq ($(LIBRARY),y)
@@ -219,7 +240,7 @@ ifeq ($(LIBRARY),y)
 else
 	$(CLEAN)    $(NAME_BASE)
 	$(CLEAN)    $(NAME_DEBUG)
-	$(CLEAN)    $(NAME_UNIT)
+	$(CLEAN)    $(NAME_BASE)*_unit
 endif
 	@for ENTRY in $(NAME_UTIL); do \
 	   if [[ -e "$${ENTRY}" ]]; then \
@@ -241,15 +262,15 @@ clean              :
 	$(CLEAN)    $(NAME_BASE)*.Sc
 	$(CLEAN)    $(NAME_BASE)*.So
 	#---(created unit code)---------------#
-	$(CLEAN)    $(NAME_UNIT).code
-	$(CLEAN)    $(NAME_UNIT).c
+	$(CLEAN)    $(NAME_BASE)*_unit.code
+	$(CLEAN)    $(NAME_BASE)*_unit.c
 	#---(junk files)----------------------#
 	$(CLEAN)    *~
 	$(CLEAN)    temp*
 
 
 
-install            : install_prep install_main install_post
+install            : install_prep install_main install_man install_post
 
 install_main       :
 ifeq ($(LIBRARY),y)
@@ -275,14 +296,6 @@ else
 	@chown       $(INST_OWNER):$(INST_OWNER)  $(INST_DIR)/$(NAME_DEBUG)
 	@sha1sum     $(INST_DIR)/$(NAME_DEBUG)
 endif
-	@for MAN in $(MANUALS); do \
-	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
- 	   declare MANBZ2="$${MAN}.bz2"; \
-      $(COPY)     $${MAN}    $${MANDIR}/; \
-      bzip2 -f    $${MANDIR}/$${MAN}; \
-      chmod 0644  $${MANDIR}/$${MANBZ2}; \
-      printf "installing manual ----------------------  %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
-   done
 	@for ENTRY in $(NAME_UTIL); do \
 	   if [[ -e "$${ENTRY}" ]]; then \
 	      $(COPY)     $${ENTRY}                    $(INST_DIR); \
@@ -299,6 +312,16 @@ endif
 install_prep       :
 
 install_post       :
+
+install_man        :
+	@for MAN in $(MANUALS); do \
+	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
+ 	   declare MANBZ2="$${MAN}.bz2"; \
+      $(COPY)     $${MAN}    $${MANDIR}/; \
+      bzip2 -f    $${MANDIR}/$${MAN}; \
+      chmod 0644  $${MANDIR}/$${MANBZ2}; \
+      printf "installing manual ----------------------  %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
+   done
 
 
 remove             : remove_prep remove_main remove_post
