@@ -71,7 +71,8 @@ endif
 #===(object variables)=====================================#
 OBJ_DEBUG  := $(patsubst %c,%o ,$(SRC_NORM))
 OBJ_NORM   := $(patsubst %c,%os,$(SRC_NORM))
-OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
+#OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
+OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_NORM )))
 OBJ_UTILD  := $(patsubst %c,%o ,$(SRC_UTIL))
 OBJ_UTIL   := $(patsubst %c,%os,$(SRC_UTIL))
 #---(simple spacing fix)-----------#
@@ -89,7 +90,7 @@ INST_OWNER := root
 INST_PERMS := 0755
 
 #===(support file variables)===============================#
-MANUALS    := $(sort $(wildcard $(NAME_BASE).[0123456789]))
+MANUALS    := $(sort $(wildcard $(NAME_BASE)*.[0123456789]))
 UNITTEST   := $(sort $(wildcard $(NAME_BASE)*.unit))
 UNITPROG   := $(subst .unit,_unit,$(UNITTEST))
 EDITLIST   := $(HEADERS) $(SRC_NORM) $(SRC_UTIL)
@@ -240,8 +241,8 @@ ifeq ($(LIBRARY),y)
 else
 	$(CLEAN)    $(NAME_BASE)
 	$(CLEAN)    $(NAME_DEBUG)
-	$(CLEAN)    $(NAME_BASE)*_unit
 endif
+	$(CLEAN)    $(NAME_BASE)*_unit
 	@for ENTRY in $(NAME_UTIL); do \
 	   if [[ -e "$${ENTRY}" ]]; then \
          printf "removing %s\n" "$${ENTRY}"; \
@@ -251,8 +252,6 @@ endif
       fi \
    done
 	$(CLEAN)    .*.swp
-
-
 
 clean              :
 	#---(object and stripped files)-------#
@@ -264,9 +263,17 @@ clean              :
 	#---(created unit code)---------------#
 	$(CLEAN)    $(NAME_BASE)*_unit.code
 	$(CLEAN)    $(NAME_BASE)*_unit.c
+	#---(HTAG stuff)----------------------#
+	$(CLEAN)    HTAG.c
+	$(CLEAN)    HTAG.gcalls
+	$(CLEAN)    HTAG.lcalls
+	$(CLEAN)    HTAG.depth
+	$(CLEAN)    HTAG.mydepth
 	#---(junk files)----------------------#
 	$(CLEAN)    *~
 	$(CLEAN)    temp*
+
+allclean           : clean bigclean
 
 
 
