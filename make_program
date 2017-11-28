@@ -55,7 +55,6 @@ COMPILE_EX :=
 INC_DIR    := -I/usr/local/include $(INC_MINE)
 HEADERS    := $(sort $(wildcard $(NAME_BASE)*.h))
 SRC_NORM   := $(patsubst %c,%c ,$(sort $(filter-out %_unit.c,$(wildcard $(NAME_BASE)*.c))))
-SRC_UNIT   := $(patsubst %c,%c ,$(sort $(filter     %_unit.c,$(wildcard $(NAME_BASE)*.c))))
 SRC_UTIL   := $(patsubst %,%.c ,$(NAME_UTIL))
 #---(remove utilities)-------------#
 SRC_NORM   := $(subst $(word 1,$(SRC_UTIL)),,$(SRC_NORM))
@@ -71,8 +70,8 @@ endif
 #===(object variables)=====================================#
 OBJ_DEBUG  := $(patsubst %c,%o ,$(SRC_NORM))
 OBJ_NORM   := $(patsubst %c,%os,$(SRC_NORM))
-#OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
-OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_NORM )))
+OBJ_UNIT   := $(patsubst %o,%os,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
+#OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.os,$(OBJ_NORM )))
 OBJ_UTILD  := $(patsubst %c,%o ,$(SRC_UTIL))
 OBJ_UTIL   := $(patsubst %c,%os,$(SRC_UTIL))
 #---(simple spacing fix)-----------#
@@ -143,7 +142,7 @@ $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
 #---(unit testing)--------------------#
 units              : $(UNITPROG)
 
-$(UNITPROG)        : %_unit : %.unit $(OBJ_DEBUG) $(UNITTEST)
+$(UNITPROG)        : %_unit : %.unit $(OBJ_NORM) $(UNITTEST)
 	@printf "unit test %s %s %d\n" "$<" "$@" "$${#$@}";
 	@declare  UNIT_ENTRY=$@; \
 	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
@@ -195,7 +194,6 @@ show_vars          :
 	$(PRINTF)   "\n";
 	$(PRINTF)   "UNITTEST   : $(UNITTEST)\n";
 	$(PRINTF)   "UNITPROG   : $(UNITPROG)\n";
-	$(PRINTF)   "SRC_UNIT   : $(SRC_UNIT)\n";
 	$(PRINTF)   "OBJ_UNIT   : $(OBJ_UNIT)\n";
 	$(PRINTF)   "\n";
 	$(PRINTF)   "SRC_UTIL   : $(SRC_UTIL)\n";
