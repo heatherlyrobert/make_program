@@ -71,7 +71,7 @@ endif
 OBJ_DEBUG  := $(patsubst %c,%o ,$(SRC_NORM))
 OBJ_NORM   := $(patsubst %c,%os,$(SRC_NORM))
 OBJ_UNIT   := $(patsubst %o,%os,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
-#OBJ_UNIT   := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.os,$(OBJ_NORM )))
+OBJ_UNITD  := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
 OBJ_UTILD  := $(patsubst %c,%o ,$(SRC_UTIL))
 OBJ_UTIL   := $(patsubst %c,%os,$(SRC_UTIL))
 #---(simple spacing fix)-----------#
@@ -151,6 +151,13 @@ $(UNITPROG)        : %_unit : %.unit $(OBJ_NORM) $(UNITTEST)
 	 koios $${UNIT_BASE}; \
     $(COMPILE) $${UNIT_ENTRY}.c; \
 	 $(LINKER) -o $${UNIT_ENTRY} $${UNIT_ENTRY}.o $(OBJ_UNIT) $(LIB_UNIT);
+	@declare  UNIT_ENTRY=$@; \
+	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
+    printf "unit_base  : %s\n" "$${UNIT_BASE}"; \
+    printf "unit_entry : %s\n" "$${UNIT_ENTRY}"; \
+	 koios --debug $${UNIT_BASE}; \
+    $(COMPILE) $${UNIT_ENTRY}.c; \
+	 $(LINKER) -o $${UNIT_ENTRY}_debug $${UNIT_ENTRY}.o $(OBJ_UNITD) $(LIB_UNIT);
 
 
 
@@ -241,6 +248,7 @@ else
 	$(CLEAN)    $(NAME_DEBUG)
 endif
 	$(CLEAN)    $(NAME_BASE)*_unit
+	$(CLEAN)    $(NAME_BASE)*_unit_debug
 	@for ENTRY in $(NAME_UTIL); do \
 	   if [[ -e "$${ENTRY}" ]]; then \
          printf "removing %s\n" "$${ENTRY}"; \

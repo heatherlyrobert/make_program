@@ -1,6 +1,6 @@
 # make_program
-#   VER_NUM     "0.5d"
-#   VER_TXT     "made unit test non-debug version for now"
+#   VER_NUM     "0.5e"
+#   VER_TXT     "cleans debug version of unit test also"
 
 make driver for heatherly standard programs
 
