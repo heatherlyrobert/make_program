@@ -235,6 +235,11 @@ vi_man             :
 vi_unit            :
 	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(UNITTEST)
 
+all_unit           :
+	for ENTRY in $$(ls --color=never -1 *_unit); do printf "$${ENTRY}\n"; ./$${ENTRY} --show-scrp; true; done
+	rm -f master.urun;
+	for ENTRY in $$(ls --color=never -1 *.urun); do printf "\n\n\n$${ENTRY}\n" >> master.urun; cat $${ENTRY} >> master.urun; done
+
 bigclean           :
 ifeq ($(LIBRARY),y)
 	${CLEAN}    lib$(NAME_BASE).so.1
