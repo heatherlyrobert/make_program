@@ -274,6 +274,7 @@ clean              :
 	#---(created unit code)---------------#
 	$(CLEAN)    $(NAME_BASE)*_unit.code
 	$(CLEAN)    $(NAME_BASE)*_unit.c
+	$(CLEAN)    $(NAME_BASE)*.urun
 	#---(HTAG stuff)----------------------#
 	$(CLEAN)    HTAG.c
 	$(CLEAN)    HTAG.gcalls
