@@ -35,12 +35,19 @@
 #===[[ VARIABLES ]]========================================#
 
 #===(content variables)====================================#
-NAME_DEBUG := $(NAME_BASE)_debug
 # starts with a 'y' means a library
 ifeq ($(shell printf "%1.1s" $(NAME_BASE)),y)
-   LIBRARY    := y
+   NAME_EXE    := lib$(NAME_BASE).so.1.0
+   NAME_INT    := lib$(NAME_BASE).so.1  
+   NAME_AR     := lib$(NAME_BASE).a
+   NAME_DEBUG  := lib$(NAME_BASE)_debug.so.1.0
+   NAME_DINT   := lib$(NAME_BASE)_debug.so.1  
+   NAME_DAR    := lib$(NAME_BASE)_debug.a
+   LIBRARY     := y
 else
-   LIBRARY    := -
+   NAME_EXE    := $(NAME_BASE)
+   NAME_DEBUG  := $(NAME_BASE)_debug
+   LIBRARY     := -
 endif
 # yLOG can not be stripped in this way
 ifeq ($(NAME_BASE),yLOG)
@@ -109,26 +116,26 @@ endif
 
 
 #===[[ MAIN RULE ]]========================================#
-all                : $(NAME_DEBUG) $(NAME_BASE) $(UNITPROG) $(NAME_UTIL)
+all                : $(NAME_DEBUG) $(NAME_EXE) $(UNITPROG) $(NAME_UTIL)
 
 
 
 #===[[ EXECUTABLES ]]======================================#
 
 #---(production version)--------------#
-$(NAME_BASE)       : $(OBJ_DEBUG)
+$(NAME_EXE)        : $(OBJ_DEBUG)
 ifeq ($(LIBRARY),y)
-	$(LINKER)  -shared -Wl,-soname,lib$(NAME_BASE).so.1    $(LIB_NORM)  -o lib$(NAME_BASE).so.1.0     $(OBJ_NORM)
-	ar         rcs                 lib$(NAME_BASE).a                                                  $(OBJ_NORM)
+	$(LINKER)  -shared -Wl,-soname,$(NAME_INT)  $(LIB_NORM)   -o $(NAME_EXE)    $(OBJ_NORM)
+	ar         rcs                 $(NAME_AR)   $(OBJ_NORM)
 else
-	$(LINKER)  -o $(NAME_BASE)        $(OBJ_NORM)   $(LIB_NORM)
+	$(LINKER)  -o $(NAME_EXE)         $(OBJ_NORM)   $(LIB_NORM)
 endif
 
 #---(debug version)-------------------#
 $(NAME_DEBUG)      : $(OBJ_DEBUG)
 ifeq ($(LIBRARY),y)
-	$(LINKER)  -shared -Wl,-soname,lib$(NAME_DEBUG).so.1   $(LIB_DEBUG)  -o lib$(NAME_DEBUG).so.1.0   $(OBJ_DEBUG)
-	ar         rcs                 lib$(NAME_DEBUG).a                                                 $(OBJ_DEBUG)
+	$(LINKER)  -shared -Wl,-soname,$(NAME_DINT) $(LIB_DEBUG)  -o $(NAME_DEBUG)  $(OBJ_DEBUG)
+	ar         rcs                 $(NAME_DAR)  $(OBJ_DEBUG)
 else
 	$(LINKER)  -o $(NAME_DEBUG)       $(OBJ_DEBUG)  $(LIB_DEBUG)
 endif
@@ -235,8 +242,8 @@ vi_man             :
 vi_unit            :
 	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(UNITTEST)
 
-all_unit           :
-	for ENTRY in $$(ls --color=never -1 *_unit); do printf "$${ENTRY}\n"; ./$${ENTRY} --show-scrp; true; done
+allunit            :
+	for ENTRY in $$(ls --color=never -1 *_unit); do printf "$${ENTRY}\n"; ./$${ENTRY} --scrp; true; done
 	rm -f master.urun;
 	for ENTRY in $$(ls --color=never -1 *.urun); do printf "\n\n\n$${ENTRY}\n" >> master.urun; cat $${ENTRY} >> master.urun; done
 
@@ -295,16 +302,16 @@ install_main       :
 ifeq ($(LIBRARY),y)
 	@_lib      -s $(NAME_BASE)
 	@ldconfig
-	@sha1sum   /usr/local/lib64/lib$(NAME_BASE).so.1.0
+	@sha1sum   /usr/local/lib64/$(NAME_EXE)
 	@_lib      -a $(NAME_BASE)
 	@ldconfig
-	@sha1sum   /usr/local/lib64/lib$(NAME_BASE).a
-	@_lib      -S $(NAME_DEBUG)
+	@sha1sum   /usr/local/lib64/$(NAME_AR)
+	@_lib      -S $(NAME_BASE)_debug
 	@ldconfig
-	@sha1sum   /usr/local/lib64/lib$(NAME_DEBUG).so.1.0
-	@_lib      -A $(NAME_DEBUG)
+	@sha1sum   /usr/local/lib64/$(NAME_DEBUG)
+	@_lib      -A $(NAME_BASE)_debug
 	@ldconfig
-	@sha1sum   /usr/local/lib64/lib$(NAME_DEBUG).a
+	@sha1sum   /usr/local/lib64/$(NAME_DAR)
 else
 	@$(COPY)     $(NAME_BASE)                 $(INST_DIR)
 	@chmod       $(INST_PERMS)                $(INST_DIR)/$(NAME_BASE)
