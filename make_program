@@ -59,8 +59,25 @@ endif
 #===(compiling variables)==================================#
 COMPILE    := gcc -c -std=gnu89 -x c -g -pg -Wall -Wextra
 COMPILE_EX :=
+ifeq ($(LIBRARY),y)
+   COMPILE_EX := -fPIC
+endif
 INC_DIR    := -I/usr/local/include $(INC_MINE)
+#===(linking variables)====================================#
+LINKER     := gcc
+LIB_DIR    := -L/usr/local/lib -L/usr/lib64 
+LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE) -lyURG_debug -lyLOG
+LIB_NORM   := $(subst _debug,      ,$(LIB_DEBUG))
+LIB_UNIT   := $(LIB_DEBUG)   -lyUNIT -lyVAR_debug
+#===(install variables)====================================#
+INST_OWNER := root
+INST_PERMS := 0755
+
+
+
+#===(code variables)=======================================#
 HEADERS    := $(sort $(wildcard $(NAME_BASE)*.h))
+#---(sources)----------------#
 SRC_NORM   := $(patsubst %c,%c ,$(sort $(filter-out %_unit.c,$(wildcard $(NAME_BASE)*.c))))
 SRC_UTIL   := $(patsubst %,%.c ,$(NAME_UTIL))
 #---(remove utilities)-------------#
@@ -69,37 +86,35 @@ SRC_NORM   := $(subst $(word 2,$(SRC_UTIL)),,$(SRC_NORM))
 SRC_NORM   := $(subst $(word 3,$(SRC_UTIL)),,$(SRC_NORM))
 SRC_NORM   := $(subst $(word 4,$(SRC_UTIL)),,$(SRC_NORM))
 SRC_NORM   := $(subst $(word 5,$(SRC_UTIL)),,$(SRC_NORM))
-#===(change for library)===================================#
-ifeq ($(LIBRARY),y)
-   COMPILE_EX := -fPIC
-endif
-
-#===(object variables)=====================================#
+#---(objects)----------------#
 OBJ_DEBUG  := $(patsubst %c,%o ,$(SRC_NORM))
 OBJ_NORM   := $(patsubst %c,%os,$(SRC_NORM))
-OBJ_UNIT   := $(patsubst %o,%os,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
-OBJ_UNITD  := $(patsubst %o,%o ,$(filter-out $(NAME_BASE)_main.o,$(OBJ_DEBUG)))
 OBJ_UTILD  := $(patsubst %c,%o ,$(SRC_UTIL))
 OBJ_UTIL   := $(patsubst %c,%os,$(SRC_UTIL))
 #---(simple spacing fix)-----------#
 SRC_NORM   := $(patsubst %os,%c ,$(OBJ_NORM))
 
-#===(linker variables)=====================================#
-LINKER     := gcc
-LIB_DIR    := -L/usr/local/lib -L/usr/lib64 
-LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE) -lyURG_debug -lyLOG
-LIB_NORM   := $(subst _debug,      ,$(LIB_DEBUG))
-LIB_UNIT   := $(LIB_DEBUG)   -lyUNIT -lyVAR_debug
 
-#===(install variables)====================================#
-INST_OWNER := root
-INST_PERMS := 0755
+
+#===(unit testing variables)===============================#
+#---(sources)----------------#
+TEMP       := $(sort $(wildcard $(NAME_BASE)*.unit))
+#---(spacing fix)------------#
+SRC_UNIT   := $(patsubst %.unit,%.unit      ,$(TEMP))
+#---(objects)----------------#
+OBJ_UNITD  := $(patsubst %.unit,%_unit.o    ,$(SRC_UNIT))
+OBJ_UNIT   := $(patsubst %.unit,%_unit.os   ,$(SRC_UNIT))
+#---(executables)------------#
+EXE_UNITD  := $(patsubst %.unit,%_unit_debug,$(SRC_UNIT))
+EXE_UNIT   := $(patsubst %.unit,%_unit      ,$(SRC_UNIT))
+
+
 
 #===(support file variables)===============================#
 MANUALS    := $(sort $(wildcard $(NAME_BASE)*.[0123456789]))
-UNITTEST   := $(sort $(wildcard $(NAME_BASE)*.unit))
-UNITPROG   := $(subst .unit,_unit,$(UNITTEST))
 EDITLIST   := $(HEADERS) $(SRC_NORM) $(SRC_UTIL)
+
+
 
 #===(housekeeping variables)===============================#
 COPY       := cp -f  
@@ -116,55 +131,64 @@ endif
 
 
 #===[[ MAIN RULE ]]========================================#
-all                : $(NAME_DEBUG) $(NAME_EXE) $(UNITPROG) $(NAME_UTIL)
+#all                : $(NAME_DEBUG) $(NAME_EXE) $(UNITEXE) $(NAME_UTIL)
+all                : $(NAME_DEBUG) $(NAME_UTIL)
 
+base               : $(NAME_DEBUG) $(NAME_UTIL)
+
+units              : $(EXE_UNIT)
 
 
 #===[[ EXECUTABLES ]]======================================#
 
 #---(production version)--------------#
-$(NAME_EXE)        : $(OBJ_DEBUG)
-ifeq ($(LIBRARY),y)
-	$(LINKER)  -shared -Wl,-soname,$(NAME_INT)  $(LIB_NORM)   -o $(NAME_EXE)    $(OBJ_NORM)
-	ar         rcs                 $(NAME_AR)   $(OBJ_NORM)
-else
-	$(LINKER)  -o $(NAME_EXE)         $(OBJ_NORM)   $(LIB_NORM)
-endif
+#$(NAME_EXE)        : $(OBJ_DEBUG)
+#ifeq ($(LIBRARY),y)
+#	$(LINKER)  -shared -Wl,-soname,$(NAME_INT)  $(LIB_NORM)   -o $(NAME_EXE)    $(OBJ_NORM)
+#	ar         rcs                 $(NAME_AR)   $(OBJ_NORM)
+#else
+#	$(LINKER)  -o $(NAME_EXE)         $(OBJ_NORM)   $(LIB_NORM)
+#endif
 
 #---(debug version)-------------------#
 $(NAME_DEBUG)      : $(OBJ_DEBUG)
 ifeq ($(LIBRARY),y)
 	$(LINKER)  -shared -Wl,-soname,$(NAME_DINT) $(LIB_DEBUG)  -o $(NAME_DEBUG)  $(OBJ_DEBUG)
 	ar         rcs                 $(NAME_DAR)  $(OBJ_DEBUG)
+	$(LINKER)  -shared -Wl,-soname,$(NAME_INT)  $(LIB_NORM)   -o $(NAME_EXE)    $(OBJ_NORM)
+	ar         rcs                 $(NAME_AR)   $(OBJ_NORM)
 else
 	$(LINKER)  -o $(NAME_DEBUG)       $(OBJ_DEBUG)  $(LIB_DEBUG)
+	$(LINKER)  -o $(NAME_EXE)         $(OBJ_NORM)   $(LIB_NORM)
 endif
 
 #---(utility versions)----------------#
 $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
 	printf "%-20.20s   %-20.20s\n" "$<" "$@";
-	$(LINKER)  -o $@          $(OBJ_NORM)   $@.os         $(LIB_NORM)   $(LIB_UTIL)
 	$(LINKER)  -o $@_debug    $(OBJ_DEBUG)  $@.o          $(LIB_DEBUG)  $(LIB_UTIL)
+	$(LINKER)  -o $@          $(OBJ_NORM)   $@.os         $(LIB_NORM)   $(LIB_UTIL)
 
 #---(unit testing)--------------------#
-units              : $(UNITPROG)
+$(EXE_UNIT)        : %_unit : %_unit.o $(HEADERS)
+	 $(LINKER) -o $@_debug $<  $(OBJ_DEBUG) $(LIB_UNIT);
+	 $(LINKER) -o $@       $<  $(OBJ_NORM)  $(LIB_UNIT);
 
-$(UNITPROG)        : %_unit : %.unit $(OBJ_NORM) $(UNITTEST)
-	@printf "unit test %s %s %d\n" "$<" "$@" "$${#$@}";
-	@declare  UNIT_ENTRY=$@; \
-	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
-    printf "unit_base  : %s\n" "$${UNIT_BASE}"; \
-    printf "unit_entry : %s\n" "$${UNIT_ENTRY}"; \
-	 koios $${UNIT_BASE}; \
-    $(COMPILE) $${UNIT_ENTRY}.c; \
-	 $(LINKER) -o $${UNIT_ENTRY} $${UNIT_ENTRY}.o $(OBJ_UNIT) $(LIB_UNIT);
-	@declare  UNIT_ENTRY=$@; \
-	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
-    printf "unit_base  : %s\n" "$${UNIT_BASE}"; \
-    printf "unit_entry : %s\n" "$${UNIT_ENTRY}"; \
-	 koios --debug $${UNIT_BASE}; \
-    $(COMPILE) $${UNIT_ENTRY}.c; \
-	 $(LINKER) -o $${UNIT_ENTRY}_debug $${UNIT_ENTRY}.o $(OBJ_UNITD) $(LIB_UNIT);
+#$(EXE_UNITD)        : %_unit : %.unit $(OBJ_NORM) $(SRC_UNIT)
+#	@printf "unit test %s %s %d\n" "$<" "$@" "$${#$@}";
+#	@declare  UNIT_ENTRY=$@; \
+#	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
+#    printf "unit_base  : %s\n" "$${UNIT_BASE}"; \
+#    printf "unit_entry : %s\n" "$${UNIT_ENTRY}"; \
+#	 koios $${UNIT_BASE}; \
+#    $(COMPILE) $${UNIT_ENTRY}.c; \
+#	 $(LINKER) -o $${UNIT_ENTRY} $${UNIT_ENTRY}.o $(OBJ_UNIT) $(LIB_UNIT);
+#	@declare  UNIT_ENTRY=$@; \
+#	 declare  UNIT_BASE=$${UNIT_ENTRY: 0: -5}; \
+#    printf "unit_base  : %s\n" "$${UNIT_BASE}"; \
+#    printf "unit_entry : %s\n" "$${UNIT_ENTRY}"; \
+#	 koios --debug $${UNIT_BASE}; \
+#    $(COMPILE) $${UNIT_ENTRY}.c; \
+#	 $(LINKER) -o $${UNIT_ENTRY}_debug $${UNIT_ENTRY}.o $(OBJ_UNITD) $(LIB_UNIT);
 
 
 
@@ -176,6 +200,14 @@ $(OBJ_DEBUG)       : %.o : %.c $(HEADERS)
 	$(COMPILE) $(COMPILE_EX)   $<                          $(INC_DIR)
 	$(STRIP)                   $<        >  $<s
 	$(COMPILE) $(COMPILE_EX)   $<s      -o  $@s            $(INC_DIR)
+
+#---(main objects)--NEW-NEW-NEW-------#
+$(OBJ_UNITD)       : %_unit.o : %.unit $(HEADERS)
+	printf "%-20.20s   %-20.20s\n" "$<" "$@";
+	koios --debug $(patsubst %.unit,%,$<)
+	$(COMPILE)    $(patsubst %.unit,%,$<)_unit.c             $(INC_DIR)
+	koios         $(patsubst %.unit,%,$<)
+	$(COMPILE)    $(patsubst %.unit,%,$<)_unit.cs  -o $@s    $(INC_DIR)
 
 #---(utility objects)-----------------#
 $(OBJ_UTILD)       : %.o : %.c $(HEADERS)
@@ -203,12 +235,14 @@ show_vars          :
 	$(PRINTF)   "HEADERS    : $(HEADERS)\n";
 	$(PRINTF)   "\n";
 	$(PRINTF)   "SRC_NORM   : $(SRC_NORM)\n";
-	$(PRINTF)   "OBJ_NORM   : $(OBJ_NORM)\n";
 	$(PRINTF)   "OBJ_DEBUG  : $(OBJ_DEBUG)\n";
+	$(PRINTF)   "OBJ_NORM   : $(OBJ_NORM)\n";
 	$(PRINTF)   "\n";
-	$(PRINTF)   "UNITTEST   : $(UNITTEST)\n";
-	$(PRINTF)   "UNITPROG   : $(UNITPROG)\n";
+	$(PRINTF)   "SRC_UNIT   : $(SRC_UNIT)\n";
+	$(PRINTF)   "OBJ_UNITD  : $(OBJ_UNITD)\n";
 	$(PRINTF)   "OBJ_UNIT   : $(OBJ_UNIT)\n";
+	$(PRINTF)   "EXE_UNITD  : $(EXE_UNITD)\n";
+	$(PRINTF)   "EXE_UNIT   : $(EXE_UNIT)\n";
 	$(PRINTF)   "\n";
 	$(PRINTF)   "SRC_UTIL   : $(SRC_UTIL)\n";
 	$(PRINTF)   "OBJ_UTIL   : $(OBJ_UTIL)\n";
@@ -240,7 +274,7 @@ vi_man             :
 	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(MANUALS)
 
 vi_unit            :
-	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(UNITTEST)
+	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(SRC_UNIT)
 
 allunit            :
 	for ENTRY in $$(ls --color=never -1 *_unit); do printf "$${ENTRY}\n"; ./$${ENTRY} --scrp; true; done
