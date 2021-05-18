@@ -325,16 +325,23 @@ clean              :
 	$(CLEAN)    $(NAME_BASE)*.Sc
 	$(CLEAN)    $(NAME_BASE)*.So
 	#---(created unit code)---------------#
+	$(CLEAN)    master.h
+	$(CLEAN)    master.urun
 	$(CLEAN)    $(NAME_BASE)*_unit.code
 	$(CLEAN)    $(NAME_BASE)*_unit.c
 	$(CLEAN)    $(NAME_BASE)*.urun
 	$(CLEAN)    $(NAME_BASE)*.tmp
+	$(CLEAN)    $(NAME_BASE)*.unit.old
+	$(CLEAN)    $(NAME_BASE)*.wave
 	#---(HTAG stuff)----------------------#
 	$(CLEAN)    HTAG.c
 	$(CLEAN)    HTAG.gcalls
 	$(CLEAN)    HTAG.lcalls
 	$(CLEAN)    HTAG.depth
 	$(CLEAN)    HTAG.mydepth
+	$(CLEAN)    polymnia.htags
+	$(CLEAN)    polymnia.mystry
+	$(CLEAN)    polymnia.ylib
 	#---(junk files)----------------------#
 	$(CLEAN)    2
 	$(CLEAN)    :w
