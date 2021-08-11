@@ -143,7 +143,7 @@ base               : $(NAME_DEBUG)
 
 other              : $(NAME_UTIL)
 
-units              : $(EXE_UNIT)
+units              : master.h $(EXE_UNIT)
 
 all                : $(NAME_DEBUG) $(NAME_UTIL) $(EXE_UNIT)
 
@@ -177,6 +177,11 @@ $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
 	printf "%-20.20s   %-20.20s\n" "$<" "$@";
 	$(LINKER)  -o $@_debug    $(OBJ_DEBUG)  $@.o          $(LIB_DEBUG)  $(LIB_UTIL)
 	$(LINKER)  -o $@          $(OBJ_NORM)   $@.os         $(LIB_NORM)   $(LIB_UTIL)
+
+#---(master unit)---------------------#
+master.h           : master.unit
+	koios --create master
+
 
 #---(unit testing)--------------------#
 $(EXE_UNIT)        : %_unit : %_unit.o $(HEADERS) $(OBJ_DEBUG)
