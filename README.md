@@ -1,6 +1,6 @@
 # make_program
-#   VER_NUM     "0.7a"
-#   VER_TXT     "added koios --create master to handle new unit testing"
+#   VER_NUM     "1.0a"
+#   VER_TXT     "created make_prepare to simplify library inclusion"
 
 make driver for heatherly standard programs
 

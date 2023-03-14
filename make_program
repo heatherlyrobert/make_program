@@ -1,39 +1,6 @@
 #================================[[ beg-code ]]================================#
 
 
-
-#===(manditory)============================================#
-# basename of executable, header, and all code files
-#NAME_BASE  = yFONT
-# additional standard and outside libraries
-#LIB_STD    = -lX11 -lGL -lm -lpng
-# all heatherly libraries used, debug versions whenever available
-#LIB_MINE   = -lyX11 -lySTR_debug -lyGLTEX_debug
-# directory for production code, no trailing slash
-#INST_DIR   = /usr/local/sbin
-
-
-
-#===(optional)=============================================#
-# extra include directories required
-#INC_MINE   = -I/usr/include/freetype2
-# utilities generated, separate from main program
-#NAME_UTIL  = yFONT_make yFONT_show yFONT_tick
-# libraries only for the utilities
-#LIB_UTIL   = -lfreetype
-
-
-
-#===(specialty)============================================#
-# post install activites
-#LINK_INST  = 
-# post remove activites
-#LINK_REM   = 
-
-
-
-#===[[ VARIABLES ]]========================================#
-
 #===(content variables)====================================#
 # starts with a 'y' means a library
 ifeq ($(shell printf "%1.1s" $(NAME_BASE)),y)
@@ -106,8 +73,7 @@ SRC_NORM   := $(patsubst %os,%c ,$(OBJ_NORM))
 
 #===(unit testing variables)===============================#
 #---(sources)----------------#
-TEMP       := $(sort $(wildcard $(NAME_BASE)*.unit))
-#---(spacing fix)------------#
+TEMP       := $(sort $(wildcard $(NAME_BASE)_*.unit))
 SRC_UNIT   := $(patsubst %.unit,%.unit      ,$(TEMP))
 #---(objects)----------------#
 OBJ_UNITD  := $(patsubst %.unit,%_unit.o    ,$(SRC_UNIT))
@@ -115,6 +81,13 @@ OBJ_UNIT   := $(patsubst %.unit,%_unit.os   ,$(SRC_UNIT))
 #---(executables)------------#
 EXE_UNITD  := $(patsubst %.unit,%_unit_debug,$(SRC_UNIT))
 EXE_UNIT   := $(patsubst %.unit,%_unit      ,$(SRC_UNIT))
+#---(editing values)---------#
+TEMP       := $(sort $(wildcard $(NAME_BASE)_[a-z]*.unit))
+SRC_RUNIT  := $(patsubst %.unit,%.unit      ,$(TEMP))
+TEMP       := $(sort $(wildcard $(NAME_BASE)_[A-Z]*.unit))
+SRC_LUNIT  := $(patsubst %.unit,%.unit      ,$(TEMP))
+TEMP       := $(sort $(wildcard $(NAME_BASE)*.sunit))
+SRC_SUNIT  := $(patsubst %.sunit,%.sunit    ,$(TEMP))
 
 
 
@@ -139,11 +112,11 @@ endif
 
 
 #===[[ MAIN RULE ]]========================================#
-base               : $(NAME_DEBUG)
+base               : $(NAME_DEBUG) other
 
 other              : $(NAME_UTIL)
 
-units              : master.h $(EXE_UNIT)
+units              : master $(EXE_UNIT)
 
 all                : $(NAME_DEBUG) $(NAME_UTIL) $(EXE_UNIT)
 
@@ -179,7 +152,7 @@ $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
 	$(LINKER)  -o $@          $(OBJ_NORM)   $@.os         $(LIB_NORM)   $(LIB_UTIL)
 
 #---(master unit)---------------------#
-master.h           : master.unit
+master             : master.unit
 	koios --create master
 
 
@@ -289,13 +262,16 @@ show_vars          :
 
 
 vi_edit            :
-	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(EDITLIST)
+#	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(EDITLIST)
+	vi -c "call HBUF_on()" -c "call HTAG_on()" $(EDITLIST)
 
 vi_man             :
-	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(MANUALS)
+#	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" $(MANUALS)
+	vi -c "call HBUF_on()" -c "call HTAG_on()" $(MANUALS)
 
 vi_unit            :
-	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" master.unit $(SRC_UNIT)
+#	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" master.unit $(SRC_UNIT)
+	vi -c "call HBUF_on()" -c "call HTAG_on()" master.unit $(SRC_RUNIT) $(SRC_LUNIT) $(SRC_SUNIT)
 
 allunit            :
 	for ENTRY in $$(ls --color=never -1 *_unit); do printf "$${ENTRY}\n"; ./$${ENTRY} --scrp; true; done
@@ -321,6 +297,9 @@ endif
       fi \
    done
 	$(CLEAN)    .*.swp
+	$(CLEAN)    .*.swn
+	$(CLEAN)    .*.swo
+	$(CLEAN)    *.tmp
 
 clean              :
 	#---(object and stripped files)-------#
@@ -349,15 +328,21 @@ clean              :
 	$(CLEAN)    polymnia.ylib
 	#---(junk files)----------------------#
 	$(CLEAN)    2
+	$(CLEAN)    , 
+	$(CLEAN)    ,q
+	$(CLEAN)    ,qq
 	$(CLEAN)    :w
+	$(CLEAN)    :{
 	$(CLEAN)    *~
 	$(CLEAN)    temp*
+	$(CLEAN)    version.txt
+	$(CLEAN)    gdb_head
 
 allclean           : clean bigclean
 
 
 
-install            : install_prep install_main install_man install_post
+install            : install_prep install_main install_man install_post other_inst
 
 install_main       :
 ifeq ($(LIBRARY),y)
@@ -405,18 +390,41 @@ install_prep       :
 
 install_post       :
 
-install_man        :
+man_post           :
+
+man_install        :
 	@for MAN in $(MANUALS); do \
-	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
+	   declare MANDIR="/usr/local/man/man$${MAN: -1:1}"; \
  	   declare MANBZ2="$${MAN}.bz2"; \
       $(COPY)     $${MAN}    $${MANDIR}/; \
       bzip2 -f    $${MANDIR}/$${MAN}; \
       chmod 0644  $${MANDIR}/$${MANBZ2}; \
       printf "installing manual ----------------------  %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
    done
+#mandb > /dev/null
 
+install_man        : man_install man_post
 
-remove             : remove_prep remove_main remove_post
+remove             : remove_prep remove_main remove_man remove_post
+
+remove_man         :
+	@for MAN in $(MANUALS); do \
+	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
+ 	   declare MANBZ2="$${MAN}.bz2"; \
+	   if [[ -e "$${MANDIR}/$${MANBZ2}" ]]; then \
+         printf "removing manual      : %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
+         rm -f       $${MANDIR}/$${MANBZ2}; \
+      fi \
+   done
+	@for MAN in $(MANUALS); do \
+	   declare MANDIR="/usr/local/man/man$${MAN: -1:1}"; \
+ 	   declare MANBZ2="$${MAN}.bz2"; \
+	   if [[ -e "$${MANDIR}/$${MANBZ2}" ]]; then \
+         printf "removing manual      : %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
+         rm -f       $${MANDIR}/$${MANBZ2}; \
+      fi \
+   done
+# mandb > /dev/null
 
 remove_main        :
 	#---(remove from production)----------#
@@ -428,14 +436,6 @@ else
 	$(CLEAN)    $(INST_DIR)/$(NAME_BASE)
 	$(CLEAN)    $(INST_DIR)/$(NAME_DEBUG)
 endif
-	@for MAN in $(MANUALS); do \
-	   declare MANDIR="/usr/share/man/man$${MAN: -1:1}"; \
- 	   declare MANBZ2="$${MAN}.bz2"; \
-	   if [[ -e "$${MANDIR}/$${MANBZ2}" ]]; then \
-         printf "removing manual      : %s/%s\n" "$${MANDIR}" "$${MANBZ2}"; \
-         rm -f       $${MANDIR}/$${MANBZ2}; \
-      fi \
-   done
 	@for ENTRY in $(NAME_UTIL); do \
 	   if [[ -e "$(INST_DIR)/$${ENTRY}" ]]; then \
          printf "removing utility     : %s/%s\n" "$(INST_DIR)" "$${ENTRY}"; \
