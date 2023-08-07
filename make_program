@@ -82,7 +82,7 @@ OBJ_UNIT   := $(patsubst %.unit,%_unit.os   ,$(SRC_UNIT))
 EXE_UNITD  := $(patsubst %.unit,%_unit_debug,$(SRC_UNIT))
 EXE_UNIT   := $(patsubst %.unit,%_unit      ,$(SRC_UNIT))
 #---(editing values)---------#
-TEMP       := $(sort $(wildcard $(NAME_BASE)_[a-z]*.unit))
+TEMP       := $(sort $(wildcard $(NAME_BASE)_[0-9a-z]*.unit))
 SRC_RUNIT  := $(patsubst %.unit,%.unit      ,$(TEMP))
 TEMP       := $(sort $(wildcard $(NAME_BASE)_[A-Z]*.unit))
 SRC_LUNIT  := $(patsubst %.unit,%.unit      ,$(TEMP))
@@ -103,7 +103,7 @@ MOVE       := mv -f
 CLEAN      := rm -f
 PRINTF     := @printf
 ifeq ($(DEBUG_VER),y)
-STRIP      := @grep -v -e " DEBUG_" -e " yLOG_" 
+STRIP      := @grep -a -v -e " DEBUG_" -e " yLOG_" 
 else
 STRIP      := cat
 endif
@@ -153,7 +153,7 @@ $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
 
 #---(master unit)---------------------#
 master             : master.unit
-	koios --create master
+	koios --ecode master
 
 
 #---(unit testing)--------------------#
@@ -191,10 +191,10 @@ $(OBJ_DEBUG)       : %.o : %.c $(HEADERS)
 
 #---(main objects)--NEW-NEW-NEW-------#
 $(OBJ_UNITD)       : %_unit.o : %.unit $(HEADERS)
-	koios --debug $(patsubst %.unit,%,$<)
-	$(COMPILE)    $(patsubst %.unit,%,$<)_unit.c           $(INC_DIR)
-	koios         $(patsubst %.unit,%,$<)
-	$(COMPILE)    $(patsubst %.unit,%,$<)_unit.cs  -o $@s  $(INC_DIR)
+	koios --edebug $(patsubst %.unit,%,$<)
+	$(COMPILE)     $(patsubst %.unit,%,$<)_unit.c           $(INC_DIR)
+	koios --ecode  $(patsubst %.unit,%,$<)
+	$(COMPILE)     $(patsubst %.unit,%,$<)_unit.cs  -o $@s  $(INC_DIR)
 
 #---(utility objects)-----------------#
 $(OBJ_UTILD)       : %.o : %.c $(HEADERS)

@@ -1,6 +1,6 @@
 # make_program
-#   VER_NUM     "1.0a"
-#   VER_TXT     "created make_prepare to simplify library inclusion"
+#   VER_NUM     "1.0b"
+#   VER_TXT     "updated STRIP for latest grep"
 
 make driver for heatherly standard programs
 

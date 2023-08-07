@@ -5,12 +5,13 @@
 #include    <ySTR.h>         /* CUSTOM : heatherly string handling            */
 
 /*---(fundamental)-----------------------*/
+#include    <yVIHUB_solo.h>       /* heatherly vikeys constants               */
 #include    <yMODE.h>             /* heatherly vikeys mode tracking           */
 #include    <yKEYS.h>             /* heatherly vikeys key handling            */
 #include    <yFILE.h>             /* heatherly vikeys content file handling   */
 #include    <yVIEW.h>             /* heatherly vikeys view management         */
 
-/*---(fundamental)-----------------------*/
+/*---(extended)--------------------------*/
 #include    <yMAP.h>              /* heatherly vikeys location management     */
 #include    <yCMD.h>              /* heatherly vikeys command processing      */
 #include    <yMACRO.h>            /* heatherly vikeys macro processing        */
