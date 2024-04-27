@@ -34,8 +34,17 @@ endif
 INC_DIR    := -I/usr/local/include $(INC_MINE)
 #===(linking variables)====================================#
 LINKER     := gcc
-LIB_DIR    := -L/usr/local/lib -L/usr/lib64 
+LIB_DIR    := -L/usr/local/lib64 -L/usr/lib64  -L/lib64 
 LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE) -lyURG_debug -lyLOG_debug
+ifeq ($(NAME_BASE),yVAR)
+   LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE)
+endif
+ifeq ($(NAME_BASE),yUNIT)
+   LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE)
+endif
+ifeq ($(NAME_BASE),koios)
+   LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE)
+endif
 ifeq ($(NAME_BASE),yLOG)
    LIB_DEBUG  := $(LIB_DIR) $(LIB_STD) $(LIB_MINE)
 endif
@@ -89,6 +98,11 @@ SRC_LUNIT  := $(patsubst %.unit,%.unit      ,$(TEMP))
 TEMP       := $(sort $(wildcard $(NAME_BASE)*.sunit))
 SRC_SUNIT  := $(patsubst %.sunit,%.sunit    ,$(TEMP))
 
+TEMP       := $(sort $(wildcard $(NAME_BASE)*.munit))
+SRC_MUNIT  := $(patsubst %.munit,%.munit    ,$(TEMP))
+OBJ_MUNIT  := $(patsubst %.munit,%_munit.o  ,$(SRC_MUNIT))
+EXE_MUNIT  := $(patsubst %.munit,%_munit    ,$(SRC_MUNIT))
+
 
 
 #===(support file variables)===============================#
@@ -112,11 +126,11 @@ endif
 
 
 #===[[ MAIN RULE ]]========================================#
-base               : $(NAME_DEBUG) other
+base               : $(NAME_DEBUG) $(NAME_UTIL)
 
-other              : $(NAME_UTIL)
+util               : $(NAME_UTIL)
 
-units              : master $(EXE_UNIT)
+units              : master $(EXE_UNIT) $(EXE_MUNIT)
 
 all                : $(NAME_DEBUG) $(NAME_UTIL) $(EXE_UNIT)
 
@@ -147,7 +161,6 @@ endif
 
 #---(utility versions)----------------#
 $(NAME_UTIL)       : % : %.o $(OBJ_DEBUG)
-	printf "%-20.20s   %-20.20s\n" "$<" "$@";
 	$(LINKER)  -o $@_debug    $(OBJ_DEBUG)  $@.o          $(LIB_DEBUG)  $(LIB_UTIL)
 	$(LINKER)  -o $@          $(OBJ_NORM)   $@.os         $(LIB_NORM)   $(LIB_UTIL)
 
@@ -158,8 +171,11 @@ master             : master.unit
 
 #---(unit testing)--------------------#
 $(EXE_UNIT)        : %_unit : %_unit.o $(HEADERS) $(OBJ_DEBUG)
-	 $(LINKER) -o $@_debug    $<   $(filter-out %_main.o,$(OBJ_DEBUG))   $(LIB_UNIT);
-	 $(LINKER) -o $@          $<   $(filter-out %_main.os,$(OBJ_NORM))   $(LIB_UNIT);
+	$(LINKER) -o $@_debug    $<   $(filter-out %_main.o,$(OBJ_DEBUG))   $(LIB_UNIT);
+	$(LINKER) -o $@          $<   $(filter-out %_main.os,$(OBJ_NORM))   $(LIB_UNIT);
+
+$(EXE_MUNIT)       : %_munit : %_munit.o $(HEADERS) $(OBJ_DEBUG)
+	$(LINKER) -o $@          $<   $(filter-out %_main.os,$(OBJ_NORM))   $(LIB_DEBUG);
 
 #$(EXE_UNITD)        : %_unit : %.unit $(OBJ_NORM) $(SRC_UNIT)
 #	@printf "unit test %s %s %d\n" "$<" "$@" "$${#$@}";
@@ -185,19 +201,26 @@ $(EXE_UNIT)        : %_unit : %_unit.o $(HEADERS) $(OBJ_DEBUG)
 
 #---(main objects)--------------------#
 $(OBJ_DEBUG)       : %.o : %.c $(HEADERS)
+	@printf "norm  %-20.20s   %-20.20s\n" "$<" "$@";
 	$(COMPILE) $(COMPILE_EX)   $<                          $(INC_DIR)
 	$(STRIP)                   $<        >  $<s
 	$(COMPILE) $(COMPILE_EX)   $<s      -o  $@s            $(INC_DIR)
 
 #---(main objects)--NEW-NEW-NEW-------#
 $(OBJ_UNITD)       : %_unit.o : %.unit $(HEADERS)
+	@printf "unit  %-20.20s   %-20.20s\n" "$<" "$@";
 	koios --edebug $(patsubst %.unit,%,$<)
 	$(COMPILE)     $(patsubst %.unit,%,$<)_unit.c           $(INC_DIR)
 	koios --ecode  $(patsubst %.unit,%,$<)
 	$(COMPILE)     $(patsubst %.unit,%,$<)_unit.cs  -o $@s  $(INC_DIR)
 
+$(OBJ_MUNIT)       : %_munit.o : %.munit $(HEADERS)
+	@printf "munit %-20.20s   %-20.20s\n" "$<" "$@";
+	$(COMPILE)     $(patsubst %.munit,%,$<).munit   -o $(patsubst %.munit,%,$<)_munit.o         $(INC_DIR)
+
 #---(utility objects)-----------------#
 $(OBJ_UTILD)       : %.o : %.c $(HEADERS)
+	@printf "util  %-20.20s   %-20.20s\n" "$<" "$@";
 	$(COMPILE)                 $<                          $(INC_DIR)
 	$(STRIP)                   $<        >  $<s
 	$(COMPILE)                 $<s      -o  $@s            $(INC_DIR)
@@ -271,7 +294,7 @@ vi_man             :
 
 vi_unit            :
 #	theia 0c; vi -c "call HBUF_on()" -c "call HTAG_on()" master.unit $(SRC_UNIT)
-	vi -c "call HBUF_on()" -c "call HTAG_on()" master.unit $(SRC_RUNIT) $(SRC_LUNIT) $(SRC_SUNIT)
+	vi -c "call HBUF_on()" -c "call HTAG_on()" master.unit $(SRC_RUNIT) $(SRC_LUNIT) $(SRC_SUNIT) $(SRC_MUNIT)
 
 allunit            :
 	for ENTRY in $$(ls --color=never -1 *_unit); do printf "$${ENTRY}\n"; ./$${ENTRY} --scrp; true; done
@@ -342,7 +365,7 @@ allclean           : clean bigclean
 
 
 
-install            : install_prep install_main install_man install_post other_inst
+install            : install_prep install_main install_man install_post
 
 install_main       :
 ifeq ($(LIBRARY),y)
@@ -350,6 +373,7 @@ ifeq ($(LIBRARY),y)
 	@ldconfig
 	@sha1sum   /usr/local/include/$(NAME_BASE).h
 	@if [[ -e "$(NAME_BASE)_solo.h" ]]; then sha1sum /usr/local/include/$(NAME_BASE)_solo.h; fi
+	@if [[ -e "$(NAME_BASE)_uver.h" ]]; then sha1sum /usr/local/include/$(NAME_BASE)_uver.h; fi
 	@if [[ -e "$(NAME_BASE)_unit.h" ]]; then sha1sum /usr/local/include/$(NAME_BASE)_unit.h; fi
 	@sha1sum   /usr/local/lib64/$(NAME_EXE)
 	@_lib      -a $(NAME_BASE)
@@ -372,7 +396,7 @@ else
 	@sha1sum     $(INST_DIR)/$(NAME_DEBUG)
 endif
 
-other_inst       :
+install_util     :
 	@for ENTRY in $(NAME_UTIL); do \
 	   if [[ -e "$${ENTRY}" ]]; then \
 	      $(COPY)     $${ENTRY}                    $(INST_DIR); \

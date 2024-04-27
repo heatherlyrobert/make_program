@@ -1,6 +1,6 @@
 # make_program
-#   VER_NUM     "1.0b"
-#   VER_TXT     "updated STRIP for latest grep"
+#   VER_NUM     "2.0a"
+#   VER_TXT     "handles new micro units (munit)"
 
 make driver for heatherly standard programs
 
